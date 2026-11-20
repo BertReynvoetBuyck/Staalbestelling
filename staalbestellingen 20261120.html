@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="nl-BE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staalbestellingen en -leveringen per project</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<style>
+:root {
+  --color-fg: #1f1e1d; --color-fg-muted: #6b6a66; --color-bg: #ffffff; --color-panel: #f7f6f3; --color-border-line: #e4e2dc;
+  --color-ok: #2e7d4f; --color-warn: #b26a00; --color-bad: #c0392b;
+  --font-anthropic-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-anthropic-serif: Georgia, "Times New Roman", serif;
+  --cds-font-size-caption: 12px; --cds-font-size-body: 15px; --cds-font-size-heading: 18px; --cds-font-size-title: 28px;
+  --cds-font-weight-medium: 600;
+  --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 12px; --cds-gap-lg: 20px; --cds-gap-xl: 32px;
+  --cds-pad-lg: 16px; --cds-radius: 8px;
+  --cds-chart-grid: #ecebe7; --cds-chart-axis: #c9c7c0; --cds-chart-reference: #8a8883; --cds-chart-muted: #b9b7b0;
+  --cds-chart-status-critical: #d93025; --cds-text-secondary: #6b6a66;
+  --cds-surface-popover: #ffffff; --cds-border: #dcdad4; --cds-shadow-popover: 0 4px 16px rgba(0,0,0,.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-fg: #ecebe8; --color-fg-muted: #a3a19c; --color-bg: #1c1b1a; --color-panel: #262523; --color-border-line: #3a3936;
+    --color-ok: #6fcf97; --color-warn: #f2b44c; --color-bad: #ff7b6b;
+    --cds-chart-grid: #2f2e2c; --cds-chart-axis: #55534f; --cds-chart-reference: #8f8d88; --cds-text-secondary: #a3a19c;
+    --cds-surface-popover: #2b2a28; --cds-border: #44423f; --cds-shadow-popover: 0 4px 16px rgba(0,0,0,.5);
+  }
+}
+body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
+.page { max-width: 1200px; margin: 0 auto; padding: 24px 20px 48px; }
+.dash-select { font: inherit; font-size: 13px; color: var(--color-fg); background-color: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 6px; padding: 4px 8px; }
+.bron { margin-top: 24px; font-size: 12px; color: var(--color-fg-muted); }
+</style>
+<script>
+/* Minimale vervanging van de dashboard-runtime: leest de ingesloten data, rekent de berekeningen uit en tekent. */
+(function () {
+  const loaders = {}, calcs = {}, draws = {}, cache = {};
+  function bron(id) {
+    if (id in cache) return cache[id];
+    const el = document.getElementById('bron-' + id);
+    let rows;
+    if (calcs[id]) {
+      const c = calcs[id];
+      rows = c.fn(...c.inputs.map((i) => bron(i)));
+    } else if (el && loaders[id]) {
+      const out = loaders[id]({answer: el.textContent});
+      rows = Array.isArray(out) ? out : out.rows;
+    } else if (el) {
+      const lines = el.textContent.trim().split(/\r?\n/);
+      const cols = lines[0].split(',');
+      rows = lines.slice(1).map((l) => { const c = l.split(','); return Object.fromEntries(cols.map((k, i) => [k, c[i] === '' ? null : c[i]])); });
+    } else rows = [];
+    return (cache[id] = rows);
+  }
+  function run(name) {
+    document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => {
+      try { draws[name](el); } catch (e) { console.error(name, e); }
+    });
+  }
+  window.dash = {
+    colors: ['#5b6b7a', '#e0443e'],
+    loader: (id, o) => { loaders[id] = o.fn; },
+    calc: (id, o) => { calcs[id] = o; },
+    data: (id) => { try { return {status: 'ok', data: bron(id)}; } catch (e) { console.error(id, e); return {status: 'error', data: [], message: String(e)}; } },
+    draw: (name, fn) => { if (fn) draws[name] = fn; else run(name); },
+    onData: (fn) => fn(), params: () => ({}), setParams: () => {}, setLink: () => {}
+  };
+  function alles() { Object.keys(draws).forEach(run); }
+  window.addEventListener('DOMContentLoaded', () => {
+    alles();
+    let w = window.innerWidth, t;
+    window.addEventListener('resize', () => { if (window.innerWidth === w) return; w = window.innerWidth; clearTimeout(t); t = setTimeout(alles, 150); });
+  });
+})();
+</script>
+</head>
+<body>
+<div class="page">
+
+<script type="text/plain" id="bron-l0">
+Project-Nr;Project-Beschrijving;Projectdeel-Beschrijving;Projectdeel-Fase;Gewicht;Level;Extern/intern;Start Day;End Day;Projectdeel-Cap_teller;History-Created by;History-Creation date;History-Modification date
+2894;Ecluse de Montmacq;Montmacq-Portes Amont/Aval;DSG;0 kg;L0;Extern;01/09/2026;30/11/2026;1;wadie.aithaddou@buyck.be;26/10/2026 09:44;20/11/2026 10:54
+2894;Ecluse de Montmacq;Montmacq-Portes Amont/Aval;ENG;0 kg;L0;Extern;10/08/2026;13/11/2026;1;wadie.aithaddou@buyck.be;26/10/2026 09:44;20/11/2026 10:54
+2894;Ecluse de Montmacq;Montmacq-Portes Amont/Aval;FAB;0 kg;L0;Extern;14/12/2026;14/04/2027;1;wadie.aithaddou@buyck.be;26/10/2026 09:44;20/11/2026 10:54
+2894;Ecluse de Montmacq;Montmacq-Portes Amont/Aval;MON;0 kg;L0;Extern;03/05/2027;07/05/2027;1;wadie.aithaddou@buyck.be;26/10/2026 09:44;20/11/2026 10:54
+2894;Ecluse de Montmacq;Montmacq-Portes Amont/Aval;PRG;0 kg;L0;Extern;01/10/2026;04/12/2026;1;wadie.aithaddou@buyck.be;26/10/2026 09:44;20/11/2026 10:54
+2894;Ecluse de Montmacq;Montmacq-Portes Amont/Aval;TR_WERF;0 kg;L0;Extern;15/04/2027;23/04/2027;1;wadie.aithaddou@buyck.be;26/10/2026 09:44;20/11/2026 10:54
+2894;Ecluse de Montmacq;Montmacq-Portes Amont/Aval;VOO;0 kg;L0;Extern;05/10/2026;10/12/2026;1;wadie.aithaddou@buyck.be;26/10/2026 09:44;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Montagemateriaal Montagemateriaal;DSG;0 kg;L0;Extern;10/08/2026;04/11/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Montagemateriaal Montagemateriaal;ENG;0 kg;L0;Extern;01/07/2026;30/10/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Montagemateriaal Montagemateriaal;FAB;0 kg;L0;Extern;08/03/2027;19/03/2027;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Montagemateriaal Montagemateriaal;MON;0 kg;L0;Extern;30/04/2026;13/05/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Montagemateriaal Montagemateriaal;PRG;0 kg;L0;Extern;21/09/2026;13/11/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Montagemateriaal Montagemateriaal;TR_WERF;0 kg;L0;Extern;27/04/2026;30/04/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Montagemateriaal Montagemateriaal;VOO;0 kg;L0;Extern;28/09/2026;05/03/2027;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Permanent staal;DSG;0 kg;L0;Extern;21/09/2026;13/11/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Permanent staal;ENG;0 kg;L0;Extern;10/08/2026;04/11/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Permanent staal;FAB;0 kg;L0;Extern;05/10/2026;18/12/2026;1;pieter.debacker@victorbuyck.be;07/10/2026 10:48;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Permanent staal;MON;0 kg;L0;Extern;01/06/2026;14/09/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Permanent staal;PRG;0 kg;L0;Extern;28/09/2026;05/03/2027;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Permanent staal;TR_WERF;0 kg;L0;Extern;30/04/2026;13/05/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Permanent staal;VOO;0 kg;L0;Extern;08/03/2027;19/03/2027;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Permanent staal Staalbestelling;DSG;0 kg;L0;Extern;01/06/2026;14/09/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2904;HS2 M62 Overbridge;Permanent staal Staallevering;TR_PROD;0 kg;L0;Extern;01/07/2026;30/10/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Deuvels SR01,S01,S02,S03,S04 Staallevering;TR_PROD;0 kg;L0;Extern;06/07/2026;17/07/2026;1;admin;12/08/2026 11:37;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Fase 1: SR01A,S01 (690T) - S02,S03,S04 (1008T) Staallevering;TR_PROD;0 kg;L0;Extern;10/08/2026;21/08/2026;1;admin;12/08/2026 11:36;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Fase 2: S05,S06,S07 (1243T) Staallevering;TR_PROD;0 kg;L0;Extern;31/08/2026;25/09/2026;1;admin;12/08/2026 11:36;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S01;CON;0 kg;L0;Extern;28/04/2027;20/05/2027;1;admin;12/08/2026 11:58;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S01;FAB;0 kg;L0;Extern;07/12/2026;16/04/2027;1;admin;12/08/2026 11:50;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S01;TR_WERF;0 kg;L0;Extern;31/01/2028;18/02/2028;1;admin;12/08/2026 12:04;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S01;VOO;0 kg;L0;Extern;23/11/2026;15/01/2027;1;admin;12/08/2026 11:42;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S02A;CON;0 kg;L0;Extern;11/02/2027;03/03/2027;1;admin;12/08/2026 11:58;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S02A;FAB;0 kg;L0;Extern;03/11/2026;05/02/2027;1;admin;12/08/2026 11:50;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S02A;VOO;0 kg;L0;Extern;19/10/2026;20/11/2026;1;admin;12/08/2026 11:43;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S02B;CON;0 kg;L0;Extern;18/05/2027;07/06/2027;1;admin;12/08/2026 11:58;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S02B;FAB;0 kg;L0;Extern;04/01/2027;07/05/2027;1;admin;12/08/2026 11:51;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S02B;VOO;0 kg;L0;Extern;14/12/2026;05/02/2027;1;admin;12/08/2026 11:43;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S03A;CON;0 kg;L0;Extern;19/02/2027;11/03/2027;1;admin;12/08/2026 11:59;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S03A;FAB;0 kg;L0;Extern;09/11/2026;12/02/2027;1;admin;12/08/2026 11:51;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S03A;VOO;0 kg;L0;Extern;19/10/2026;27/11/2026;1;admin;12/08/2026 11:43;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S03B;CON;0 kg;L0;Extern;31/05/2027;18/06/2027;1;admin;12/08/2026 11:59;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S03B;FAB;0 kg;L0;Extern;18/01/2027;21/05/2027;1;admin;12/08/2026 11:51;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S03B;VOO;0 kg;L0;Extern;04/01/2027;26/02/2027;1;admin;12/08/2026 11:44;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S04A;CON;0 kg;L0;Extern;23/02/2027;15/03/2027;1;admin;12/08/2026 11:59;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S04A;FAB;0 kg;L0;Extern;09/11/2026;12/02/2027;1;admin;12/08/2026 11:52;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S04A;VOO;0 kg;L0;Extern;26/10/2026;04/12/2026;1;admin;12/08/2026 11:44;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S04B;CON;0 kg;L0;Extern;28/06/2027;16/07/2027;1;admin;12/08/2026 11:59;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S04B;FAB;0 kg;L0;Extern;15/02/2027;18/06/2027;1;admin;12/08/2026 11:52;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S04B;VOO;0 kg;L0;Extern;01/02/2027;02/04/2027;1;admin;12/08/2026 11:44;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S05A;CON;0 kg;L0;Extern;19/03/2027;09/04/2027;1;admin;12/08/2026 12:00;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S05A;FAB;0 kg;L0;Extern;07/12/2026;12/03/2027;1;admin;12/08/2026 11:53;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S05A;VOO;0 kg;L0;Extern;23/11/2026;08/01/2027;1;admin;12/08/2026 11:45;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S05B;CON;0 kg;L0;Extern;16/08/2027;03/09/2027;1;admin;12/08/2026 12:00;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S05B;FAB;0 kg;L0;Extern;15/03/2027;16/07/2027;1;admin;12/08/2026 11:53;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S05B;VOO;0 kg;L0;Extern;01/03/2027;30/04/2027;1;admin;12/08/2026 11:45;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S06A;CON;0 kg;L0;Extern;28/04/2027;20/05/2027;1;admin;12/08/2026 12:01;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S06A;FAB;0 kg;L0;Extern;25/01/2027;23/04/2027;1;admin;12/08/2026 11:54;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S06A;VOO;0 kg;L0;Extern;04/01/2027;12/02/2027;1;admin;12/08/2026 11:45;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S06B;CON;0 kg;L0;Extern;29/09/2027;19/10/2027;1;admin;12/08/2026 12:01;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S06B;FAB;0 kg;L0;Extern;26/04/2027;17/09/2027;1;admin;12/08/2026 11:54;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S06B;VOO;0 kg;L0;Extern;12/04/2027;04/06/2027;1;admin;12/08/2026 11:46;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S07A;CON;0 kg;L0;Extern;25/05/2027;14/06/2027;1;admin;12/08/2026 12:01;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S07A;FAB;0 kg;L0;Extern;08/02/2027;14/05/2027;1;admin;12/08/2026 11:54;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S07A;VOO;0 kg;L0;Extern;25/01/2027;05/03/2027;1;admin;12/08/2026 11:46;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S07B;CON;0 kg;L0;Extern;26/10/2027;18/11/2027;1;admin;12/08/2026 12:01;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S07B;FAB;0 kg;L0;Extern;24/05/2027;22/10/2027;1;admin;12/08/2026 11:55;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S07B;VOO;0 kg;L0;Extern;10/05/2027;02/07/2027;1;admin;12/08/2026 11:46;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S08A;CON;0 kg;L0;Extern;18/10/2027;09/11/2027;1;admin;12/08/2026 12:02;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S08A;FAB;0 kg;L0;Extern;07/06/2027;08/10/2027;1;admin;12/08/2026 11:55;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S08A;VOO;0 kg;L0;Extern;24/05/2027;16/07/2027;1;admin;12/08/2026 11:47;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S08B;CON;0 kg;L0;Extern;25/11/2027;15/12/2027;1;admin;12/08/2026 12:02;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S08B;FAB;0 kg;L0;Extern;21/06/2027;19/11/2027;1;admin;12/08/2026 11:56;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;S08B;VOO;0 kg;L0;Extern;07/06/2027;20/08/2027;1;admin;12/08/2026 11:47;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S02;CON;0 kg;L0;Extern;06/07/2027;16/08/2027;1;admin;12/08/2026 11:59;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S02;FAB;0 kg;L0;Extern;07/06/2027;09/07/2027;1;admin;12/08/2026 11:51;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S02;TR_WERF;0 kg;L0;Extern;31/01/2028;18/02/2028;1;admin;12/08/2026 12:04;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S03;CON;0 kg;L0;Extern;16/08/2027;03/09/2027;1;admin;12/08/2026 11:59;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S03;FAB;0 kg;L0;Extern;21/06/2027;16/07/2027;1;admin;12/08/2026 11:52;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S03;TR_WERF;0 kg;L0;Extern;31/01/2028;18/02/2028;1;admin;12/08/2026 12:04;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S04;CON;0 kg;L0;Extern;13/09/2027;01/10/2027;1;admin;12/08/2026 12:00;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S04;FAB;0 kg;L0;Extern;09/08/2027;10/09/2027;1;admin;12/08/2026 11:52;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S04;TR_WERF;0 kg;L0;Extern;31/01/2028;18/02/2028;1;admin;12/08/2026 12:04;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S05;CON;0 kg;L0;Extern;11/10/2027;29/10/2027;1;admin;12/08/2026 12:00;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S05;FAB;0 kg;L0;Extern;06/09/2027;01/10/2027;1;admin;12/08/2026 11:53;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S05;TR_WERF;0 kg;L0;Extern;31/01/2028;18/02/2028;1;admin;12/08/2026 12:04;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S06;CON;0 kg;L0;Extern;29/11/2027;17/12/2027;1;admin;12/08/2026 12:01;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S06;FAB;0 kg;L0;Extern;18/10/2027;26/11/2027;1;admin;12/08/2026 11:54;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S06;TR_WERF;0 kg;L0;Extern;02/05/2028;22/05/2028;1;admin;12/08/2026 12:04;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S07;CON;0 kg;L0;Extern;03/01/2028;21/01/2028;1;admin;12/08/2026 12:02;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S07;FAB;0 kg;L0;Extern;15/11/2027;10/12/2027;1;admin;12/08/2026 11:55;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S07;TR_WERF;0 kg;L0;Extern;02/05/2028;22/05/2028;1;admin;12/08/2026 12:04;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S08;CON;0 kg;L0;Extern;28/01/2028;17/02/2028;1;admin;12/08/2026 12:02;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S08;FAB;0 kg;L0;Extern;13/12/2027;21/01/2028;1;admin;12/08/2026 11:56;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S08;TR_WERF;0 kg;L0;Extern;02/05/2028;22/05/2028;1;admin;12/08/2026 12:04;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw S09;TR_WERF;0 kg;L0;Extern;02/05/2028;22/05/2028;1;admin;12/08/2026 12:04;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw SR01;CON;0 kg;L0;Extern;19/02/2027;02/04/2027;1;admin;12/08/2026 11:58;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw SR01;FAB;0 kg;L0;Extern;01/02/2027;26/03/2027;1;admin;12/08/2026 11:49;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Samenbouw SR01;TR_WERF;0 kg;L0;Extern;31/01/2028;18/02/2028;1;admin;12/08/2026 12:03;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;SR01A;CON;0 kg;L0;Extern;05/03/2027;25/03/2027;1;admin;12/08/2026 11:57;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;SR01A;FAB;0 kg;L0;Extern;07/12/2026;26/02/2027;1;admin;12/08/2026 11:49;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;SR01A;VOO;0 kg;L0;Extern;23/11/2026;08/01/2027;1;admin;12/08/2026 11:42;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;SR01B;CON;0 kg;L0;Extern;13/01/2027;02/02/2027;1;admin;12/08/2026 11:57;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;SR01B;FAB;0 kg;L0;Extern;05/10/2026;08/01/2027;1;admin;12/08/2026 11:48;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;SR01B;VOO;0 kg;L0;Extern;14/09/2026;23/10/2026;1;admin;12/08/2026 11:40;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;SR01C;CON;0 kg;L0;Extern;17/02/2027;09/03/2027;1;admin;12/08/2026 11:57;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;SR01C;FAB;0 kg;L0;Extern;19/10/2026;12/02/2027;1;admin;12/08/2026 11:49;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;SR01C;VOO;0 kg;L0;Extern;05/10/2026;06/11/2026;1;admin;12/08/2026 11:42;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;SR01D;CON;0 kg;L0;Extern;19/01/2027;08/02/2027;1;admin;12/08/2026 11:57;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;SR01D;FAB;0 kg;L0;Extern;12/10/2026;15/01/2027;1;admin;12/08/2026 11:49;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;SR01D;VOO;0 kg;L0;Extern;28/09/2026;23/10/2026;1;admin;12/08/2026 11:41;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Strombrücke F09;TR_WERF;0 kg;L0;Extern;06/11/2028;01/12/2028;1;admin;12/08/2026 12:05;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Strombrücke Staalbestelling;DSG;0 kg;L0;Extern;15/07/2026;02/09/2026;1;admin;12/08/2026 11:37;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Strombrücke Staallevering;TR_PROD;0 kg;L0;Extern;30/11/2026;11/12/2026;1;admin;12/08/2026 11:37;20/11/2026 10:54
+2998;Neue Peenebrücke Wolgast;Troggen SR01B,D,S02,S03,S04,S05 (195T) Staallevering;TR_PROD;0 kg;L0;Extern;06/07/2026;17/07/2026;1;admin;12/08/2026 11:36;20/11/2026 10:54
+3011;Luchthaventram Viaduct;KW02;MON;0 kg;L0;Extern;22/09/2026;28/05/2027;1;bert.reynvoet@buyck.be;24/09/2026 12:45;20/11/2026 10:54
+3011;Luchthaventram Viaduct;KW02;TR_WERF;0 kg;L0;Extern;22/09/2026;25/09/2026;1;bert.reynvoet@buyck.be;24/09/2026 12:45;20/11/2026 10:54
+3011;Luchthaventram Viaduct;KW02;TR_WERF;0 kg;L0;Extern;15/12/2026;18/12/2026;1;bert.reynvoet@buyck.be;24/09/2026 12:53;20/11/2026 10:54
+3011;Luchthaventram Viaduct;KW02;TR_WERF;0 kg;L0;Extern;01/03/2027;04/03/2027;1;bert.reynvoet@buyck.be;24/09/2026 12:54;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52;CON;0 kg;L0;Extern;08/03/2027;19/03/2027;1;pieter.debacker@victorbuyck.be;26/08/2026 09:29;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52;CON;0 kg;L0;Extern;08/03/2027;25/03/2027;0;admin;24/06/2026 15:57;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52;DSG;0 kg;L0;Extern;01/07/2026;30/10/2026;1;pieter.debacker@victorbuyck.be;26/08/2026 09:29;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52;ENG;0 kg;L0;Extern;01/06/2026;14/09/2026;1;pieter.debacker@victorbuyck.be;26/08/2026 09:29;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52;FAB;0 kg;L0;Extern;28/09/2026;05/03/2027;1;pieter.debacker@victorbuyck.be;26/08/2026 09:29;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52;FAB;0 kg;L0;Extern;12/10/2026;05/03/2027;0;admin;24/06/2026 15:56;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52;MON;0 kg;L0;Extern;30/04/2026;13/05/2026;1;pieter.debacker@victorbuyck.be;26/08/2026 09:29;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52;PRG;0 kg;L0;Extern;10/08/2026;04/11/2026;1;pieter.debacker@victorbuyck.be;26/08/2026 09:29;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52;TR_WERF;0 kg;L0;Extern;27/04/2026;30/04/2026;1;pieter.debacker@victorbuyck.be;26/08/2026 09:29;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52;TR_WERF;0 kg;L0;Extern;26/04/2027;30/04/2027;0;admin;24/06/2026 15:57;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52;VOO;0 kg;L0;Extern;21/09/2026;13/11/2026;1;pieter.debacker@victorbuyck.be;26/08/2026 09:29;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52;VOO;0 kg;L0;Extern;05/10/2026;04/12/2026;0;admin;24/06/2026 15:55;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52 Montagemateriaal;FAB;0 kg;L0;Extern;30/03/2027;16/04/2027;0;admin;24/06/2026 15:58;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52 Montagemateriaal;TR_WERF;0 kg;L0;Extern;19/04/2027;23/04/2027;0;admin;24/06/2026 15:58;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52 Montagemateriaal;VOO;0 kg;L0;Extern;08/03/2027;26/03/2027;0;admin;24/06/2026 15:57;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52 Montagemateriaal;VOO;0 kg;L0;Extern;08/03/2027;26/03/2027;0;admin;24/06/2026 15:58;20/11/2026 10:54
+3013;R4WO KWN52 Fietsbrug;KWN52 Staallevering;TR_PROD;0 kg;L0;Extern;10/08/2026;14/08/2026;0;admin;24/06/2026 15:58;20/11/2026 10:54
+3053;White Cart Bridge;Montagemateriaal;FAB;0 kg;L0;Extern;06/07/2026;18/09/2026;1;admin;12/08/2026 08:47;20/11/2026 10:54
+3053;White Cart Bridge;Montagemateriaal;TR_WERF;0 kg;L0;Extern;06/07/2026;18/09/2026;1;admin;12/08/2026 08:47;20/11/2026 10:54
+3053;White Cart Bridge;Permanent staal;CON;0 kg;L0;Extern;22/06/2026;04/09/2026;1;admin;12/08/2026 08:45;20/11/2026 10:54
+3053;White Cart Bridge;Permanent staal;FAB;0 kg;L0;Extern;08/06/2026;21/08/2026;1;admin;12/08/2026 08:45;20/11/2026 10:54
+3053;White Cart Bridge;Permanent staal;MON;0 kg;L0;Extern;06/07/2026;05/03/2027;1;admin;12/08/2026 08:46;20/11/2026 10:54
+3053;White Cart Bridge;Permanent staal;TR_WERF;0 kg;L0;Extern;06/07/2026;18/09/2026;1;admin;12/08/2026 08:46;20/11/2026 10:54
+3068;Weathered Steel Posts EKFB;Weathered Steelposts;DSG;0 kg;L0;Extern;23/11/2026;08/01/2027;1;Ronald.Verschelden@buyck.be;30/10/2026 15:35;20/11/2026 10:54
+3068;Weathered Steel Posts EKFB;Weathered Steelposts;ENG;0 kg;L0;Extern;23/11/2026;27/11/2026;1;Ronald.Verschelden@buyck.be;30/10/2026 15:35;20/11/2026 10:54
+3068;Weathered Steel Posts EKFB;Weathered Steelposts;FAB;0 kg;L0;Extern;15/02/2027;14/05/2027;1;Ronald.Verschelden@buyck.be;30/10/2026 15:35;20/11/2026 10:54
+3068;Weathered Steel Posts EKFB;Weathered Steelposts;PRG;0 kg;L0;Extern;11/01/2027;15/01/2027;1;Ronald.Verschelden@buyck.be;30/10/2026 15:35;20/11/2026 10:54
+3068;Weathered Steel Posts EKFB;Weathered Steelposts;TR_WERF;0 kg;L0;Extern;22/03/2027;28/05/2027;1;Ronald.Verschelden@buyck.be;30/10/2026 15:35;20/11/2026 10:54
+3068;Weathered Steel Posts EKFB;Weathered Steelposts;VOO;0 kg;L0;Extern;08/02/2027;12/02/2027;1;Ronald.Verschelden@buyck.be;30/10/2026 15:35;20/11/2026 10:54
+3068;Weathered Steel Posts EKFB;Weathered Steelposts Staalbestelling;DSG;0 kg;L0;Extern;16/11/2026;20/11/2026;1;Ronald.Verschelden@buyck.be;30/10/2026 15:35;20/11/2026 10:54
+3068;Weathered Steel Posts EKFB;Weathered Steelposts Staallevering;TR_PROD;0 kg;L0;Extern;23/11/2026;05/02/2027;1;Ronald.Verschelden@buyck.be;30/10/2026 15:35;20/11/2026 10:54
+3077;River Rea;Permanent Staal;DSG;0 kg;L0;Extern;01/07/2026;30/10/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Permanent Staal;ENG;0 kg;L0;Extern;01/06/2026;14/09/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Permanent Staal;FAB;0 kg;L0;Extern;28/09/2026;05/03/2027;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Permanent Staal;MON;0 kg;L0;Extern;27/04/2026;30/04/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Permanent Staal;PRG;0 kg;L0;Extern;10/08/2026;04/11/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Permanent Staal;TR_WERF;0 kg;L0;Extern;08/03/2027;19/03/2027;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Permanent Staal;VOO;0 kg;L0;Extern;21/09/2026;13/11/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Tijdelijke werken Montagemateriaal;DSG;0 kg;L0;Extern;01/07/2026;30/10/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Tijdelijke werken Montagemateriaal;ENG;0 kg;L0;Extern;01/06/2026;14/09/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Tijdelijke werken Montagemateriaal;FAB;0 kg;L0;Extern;28/09/2026;05/03/2027;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Tijdelijke werken Montagemateriaal;MON;0 kg;L0;Extern;27/04/2026;30/04/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Tijdelijke werken Montagemateriaal;PRG;0 kg;L0;Extern;10/08/2026;04/11/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Tijdelijke werken Montagemateriaal;TR_WERF;0 kg;L0;Extern;08/03/2027;19/03/2027;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3077;River Rea;Tijdelijke werken Montagemateriaal;VOO;0 kg;L0;Extern;21/09/2026;13/11/2026;1;Capaciteit event;07/10/2026 11:17;20/11/2026 10:54
+3102;Ledabrücke;Boogbrug en Aanbrug;CON;0 kg;L0;Extern;03/01/2028;13/04/2028;1;admin;12/08/2026 10:09;20/11/2026 10:54
+3102;Ledabrücke;Boogbrug en Aanbrug;FAB;0 kg;L0;Extern;19/04/2027;21/02/2028;1;admin;12/08/2026 10:08;20/11/2026 10:54
+3102;Ledabrücke;Boogbrug en Aanbrug Staalbestelling;DSG;1640000 kg;L0;Extern;03/11/2026;24/11/2026;1;admin;12/08/2026 10:11;20/11/2026 10:54
+3102;Ledabrücke;Boogbrug en Aanbrug Staallevering;TR_PROD;0 kg;L0;Extern;08/03/2027;12/03/2027;1;admin;12/08/2026 10:11;20/11/2026 10:54
+3102;Ledabrücke;Ledabrücke;DSG;0 kg;L0;Extern;30/04/2026;08/03/2027;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3102;Ledabrücke;Ledabrücke;ENG;0 kg;L0;Extern;13/05/2026;21/08/2026;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3102;Ledabrücke;Ledabrücke;FAB;0 kg;L0;Extern;19/03/2027;01/09/2027;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3102;Ledabrücke;Ledabrücke;MON;0 kg;L0;Extern;03/09/2027;12/09/2028;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3102;Ledabrücke;Ledabrücke Staalbestelling;DSG;0 kg;L0;Extern;17/11/2026;17/11/2026;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3102;Ledabrücke;Ledabrücke Staallevering;TR_PROD;0 kg;L0;Extern;25/11/2026;02/03/2027;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF007;DSG;0 kg;L0;Extern;17/02/2027;18/05/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF007;ENG;0 kg;L0;Extern;17/02/2027;18/05/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF007;FAB;0 kg;L0;Extern;08/09/2027;23/12/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF007;MON;0 kg;L0;Extern;02/08/2029;02/08/2029;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF007;PRG;0 kg;L0;Extern;17/02/2027;18/05/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF007;TR_WERF;0 kg;L0;Extern;02/08/2029;02/08/2029;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF007;VOO;0 kg;L0;Extern;08/09/2027;23/12/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF007 Staalbestelling;DSG;0 kg;L0;Extern;10/02/2027;16/02/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF007 Staallevering;TR_PROD;0 kg;L0;Extern;17/02/2027;18/05/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF008;DSG;0 kg;L0;Extern;17/02/2027;18/05/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF008;ENG;0 kg;L0;Extern;17/02/2027;18/05/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF008;FAB;0 kg;L0;Extern;19/05/2027;07/09/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF008;MON;0 kg;L0;Extern;04/04/2029;23/04/2029;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF008;PRG;0 kg;L0;Extern;17/02/2027;18/05/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF008;TR_WERF;0 kg;L0;Extern;04/04/2029;04/04/2029;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF008;VOO;0 kg;L0;Extern;19/05/2027;07/09/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF008 Staalbestelling;DSG;0 kg;L0;Extern;03/02/2027;09/02/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF008 Staallevering;TR_PROD;0 kg;L0;Extern;17/02/2027;18/05/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF009;DSG;0 kg;L0;Extern;21/09/2026;18/12/2026;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF009;ENG;0 kg;L0;Extern;21/09/2026;18/12/2026;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF009;FAB;0 kg;L0;Extern;25/01/2027;26/04/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF009;MON;0 kg;L0;Extern;03/05/2027;25/06/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF009;PRG;0 kg;L0;Extern;01/12/2026;18/12/2026;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF009;TR_WERF;0 kg;L0;Extern;03/05/2027;03/05/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF009;VOO;0 kg;L0;Extern;05/01/2027;26/04/2027;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF009 Staalbestelling;DSG;0 kg;L0;Extern;07/09/2026;11/09/2026;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3105;Ringfietspad FR0 Dilbeek;KF009 Staallevering;TR_PROD;0 kg;L0;Extern;14/09/2026;09/12/2026;1;carlotta.dammekens@victorbuyck.be;13/10/2026 12:38;20/11/2026 10:54
+3118;Talbrücke Büschergrund;Permanent staal;CON;0 kg;L0;Extern;07/06/2027;04/02/2028;1;admin;12/08/2026 10:16;20/11/2026 10:54
+3118;Talbrücke Büschergrund;TB Büschergrund Fase1;DSG;0 kg;L0;Extern;27/10/2026;19/01/2027;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3118;Talbrücke Büschergrund;TB Büschergrund Fase1;ENG;0 kg;L0;Extern;29/05/2026;10/11/2026;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3118;Talbrücke Büschergrund;TB Büschergrund Fase1;FAB;0 kg;L0;Extern;03/03/2027;11/06/2027;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3118;Talbrücke Büschergrund;TB Büschergrund Fase1;MON;0 kg;L0;Extern;27/04/2027;21/06/2028;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3118;Talbrücke Büschergrund;TB Büschergrund Fase1 Staalbestelling;DSG;0 kg;L0;Extern;16/11/2026;16/11/2026;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3118;Talbrücke Büschergrund;TB Büschergrund Fase1 Staallevering;TR_PROD;0 kg;L0;Extern;16/11/2026;02/03/2027;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3118;Talbrücke Büschergrund;TB Büschergrund Fase2;FAB;0 kg;L0;Extern;29/09/2028;12/09/2029;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3118;Talbrücke Büschergrund;TB Büschergrund Fase2;MON;0 kg;L0;Extern;02/08/2029;25/09/2030;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3118;Talbrücke Büschergrund;TB Büschergrund Fase2 Staalbestelling;DSG;0 kg;L0;Extern;23/06/2028;23/06/2028;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3118;Talbrücke Büschergrund;TB Büschergrund Fase2 Staallevering;TR_PROD;0 kg;L0;Extern;23/06/2028;28/09/2028;1;Capaciteit event;07/10/2026 15:17;20/11/2026 10:54
+3124;Brabantnet Luchthaventram KW01;KW01;DSG;0 kg;L0;Extern;30/04/2026;16/10/2026;1;bert.reynvoet@buyck.be;24/09/2026 14:39;20/11/2026 10:54
+3124;Brabantnet Luchthaventram KW01;KW01;FAB;0 kg;L0;Extern;31/08/2026;13/01/2027;1;bert.reynvoet@buyck.be;24/09/2026 14:39;20/11/2026 10:54
+3124;Brabantnet Luchthaventram KW01;KW01;MON;0 kg;L0;Extern;20/05/2027;30/09/2027;1;bert.reynvoet@buyck.be;24/09/2026 14:39;20/11/2026 10:54
+3124;Brabantnet Luchthaventram KW01;KW01;PRG;0 kg;L0;Extern;22/05/2026;30/10/2026;1;bert.reynvoet@buyck.be;24/09/2026 14:39;20/11/2026 10:54
+3124;Brabantnet Luchthaventram KW01;KW01;TR_WERF;0 kg;L0;Extern;21/06/2027;23/06/2027;1;bert.reynvoet@buyck.be;24/09/2026 14:39;20/11/2026 10:54
+3124;Brabantnet Luchthaventram KW01;KW01;VOO;0 kg;L0;Extern;10/08/2026;23/10/2026;1;bert.reynvoet@buyck.be;24/09/2026 14:39;20/11/2026 10:54
+3124;Brabantnet Luchthaventram KW01;KW01 Staalbestelling;DSG;0 kg;L0;Extern;13/04/2026;20/04/2026;1;bert.reynvoet@buyck.be;24/09/2026 14:39;20/11/2026 10:54
+3124;Brabantnet Luchthaventram KW01;KW01 Staallevering;TR_PROD;0 kg;L0;Extern;20/04/2026;17/07/2026;1;bert.reynvoet@buyck.be;24/09/2026 14:39;20/11/2026 10:54
+3130;Lantis Fietsbruggen;Fietsbrug;DSG;0 kg;L0;Extern;01/06/2026;26/01/2027;1;admin;22/09/2026 09:00;20/11/2026 10:54
+3130;Lantis Fietsbruggen;Fietsbrug;ENG;0 kg;L0;Extern;01/06/2026;26/01/2027;1;admin;22/09/2026 09:00;20/11/2026 10:54
+3130;Lantis Fietsbruggen;Fietsbrug;FAB;0 kg;L0;Extern;10/02/2027;17/06/2027;1;admin;22/09/2026 09:00;20/11/2026 10:54
+3130;Lantis Fietsbruggen;Fietsbrug;MON;0 kg;L0;Extern;17/08/2027;18/08/2027;1;admin;22/09/2026 09:00;20/11/2026 10:54
+3130;Lantis Fietsbruggen;Fietsbrug;PRG;0 kg;L0;Extern;20/01/2027;26/01/2027;1;admin;22/09/2026 09:00;20/11/2026 10:54
+3130;Lantis Fietsbruggen;Fietsbrug;TR_WERF;0 kg;L0;Extern;10/08/2027;13/08/2027;1;admin;22/09/2026 09:00;20/11/2026 10:54
+3130;Lantis Fietsbruggen;Fietsbrug;VOO;0 kg;L0;Extern;27/01/2027;09/02/2027;1;admin;22/09/2026 09:00;20/11/2026 10:54
+3130;Lantis Fietsbruggen;Fietsbrug Staalbestelling;DSG;0 kg;L0;Extern;28/09/2026;16/10/2026;1;admin;22/09/2026 09:00;20/11/2026 10:54
+3130;Lantis Fietsbruggen;Fietsbrug Staallevering;TR_PROD;274000 kg;L0;Extern;19/10/2026;26/01/2027;1;admin;22/09/2026 09:00;20/11/2026 10:54
+3142;Sarens Ring mats;LSM Permanent staal;CON;0 kg;L0;Extern;01/09/2026;26/11/2026;1;admin;01/07/2026 15:29;20/11/2026 10:54
+3142;Sarens Ring mats;LSM Permanent staal;DSG;0 kg;L0;Extern;29/06/2026;10/07/2026;1;admin;01/07/2026 15:28;20/11/2026 10:54
+3142;Sarens Ring mats;LSM Permanent staal;ENG;0 kg;L0;Extern;29/06/2026;03/07/2026;1;admin;01/07/2026 15:27;20/11/2026 10:54
+3142;Sarens Ring mats;LSM Permanent staal;FAB;0 kg;L0;Extern;13/07/2026;13/11/2026;1;admin;01/07/2026 15:28;20/11/2026 10:54
+3142;Sarens Ring mats;LSM Permanent staal;PRG;0 kg;L0;Extern;02/07/2026;07/07/2026;1;admin;01/07/2026 15:28;20/11/2026 10:54
+3142;Sarens Ring mats;LSM Permanent staal;TR_WERF;0 kg;L0;Extern;23/11/2026;27/11/2026;1;admin;01/07/2026 15:30;20/11/2026 10:54
+3142;Sarens Ring mats;LSM Permanent staal;VOO;0 kg;L0;Extern;06/07/2026;14/08/2026;1;admin;01/07/2026 15:28;20/11/2026 10:54
+3142;Sarens Ring mats;LSM Staalbestelling;DSG;0 kg;L0;Extern;22/06/2026;26/06/2026;1;admin;01/07/2026 15:29;20/11/2026 10:54
+3142;Sarens Ring mats;LSM Staallevering;TR_PROD;0 kg;L0;Extern;06/07/2026;06/07/2026;1;admin;01/07/2026 15:29;20/11/2026 10:54
+</script>
+<script type="text/plain" id="bron-projecten">
+Nr,Omschrijving,Projectleider
+2653,Royersluis Antwerpen,Dominique Hallaert
+2792,HS2 M6 Motorway Viaduct,Carlotta Dammekens
+2804,R4WO KWN02 Ringvaartbrug,Koen Vlaminck
+2883,HS2 Diddington Lane Overbridge,Elvis Koci
+2894,Ecluse de Montmacq,Wadie Ait Haddou
+2904,HS2 M62 Overbridge,Elvis Koci
+2958,Sluis Obourg,Benoît Vandermeulen
+2969,HS2 River Avon,Elvis Koci
+2972,Sainctelette & De Trooz Fietsbruggen,Dominique Hallaert
+2982,Boogbrug Bertem,Carlotta Dammekens
+2985,HS2 Longhole Viaduct,Elvis Koci
+2998,Neue Peenebrücke Wolgast,Benoît Vandermeulen
+3011,Luchthaventram Viaduct,Bert Reynvoet
+3012,R4WO KWN90 Spoorbrug,Koen Vlaminck
+3013,R4WO KWN52 Fietsbrug,Koen Vlaminck
+3053,White Cart Bridge,Bert Reynvoet
+3077,River Rea,Elvis Koci
+3102,Ledabrücke,Koen Vlaminck
+3105,Ringfietspad FR0 Dilbeek,Carlotta Dammekens
+3118,Talbrücke Büschergrund,Koen Vlaminck
+3130,Lantis Fietsbruggen,Benoît Vandermeulen
+3131,4KBL Arcelormittal Gent,Carlotta Dammekens
+</script>
+<style>
+.st { font-family: var(--font-anthropic-sans); color: var(--color-fg); }
+.st h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0 0 var(--cds-gap-sm); }
+.st h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: var(--cds-gap-xl) 0 var(--cds-gap-xs); }
+.st .lead { font-size: var(--cds-font-size-body); max-width: 60rem; margin: 0 0 var(--cds-gap-lg); }
+.st .sub { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); margin: 0 0 var(--cds-gap-md); max-width: 60rem; }
+.st .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--cds-gap-md); }
+.st .tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); }
+.st .tile .lbl { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.st .tile .val { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 2.2rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.st .tile .val.small { font-size: 1.5rem; }
+.st .tile .note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-top: 2px; }
+.st .tile.warn .val { color: var(--color-warn); }
+.st .ctrl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-sm) var(--cds-gap-lg); margin: 0 0 var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.st .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.st .legend span { display: inline-flex; align-items: center; gap: 6px; }
+.st .legend i { width: 16px; height: 10px; border-radius: 2px; display: inline-block; }
+.st .legend i.line { height: 0; border-top: 1.5px dashed var(--cds-chart-reference); border-radius: 0; }
+.st .chart { position: relative; min-height: 160px; }
+.st .chart svg text { font-size: 11px; fill: var(--cds-text-secondary); }
+.st .chart .ptitle { font-size: 12px; fill: var(--color-fg); font-weight: 600; }
+.st .tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); border-radius: var(--cds-radius); padding: 6px 9px; font-size: var(--cds-font-size-caption); color: var(--color-fg); white-space: nowrap; z-index: 5; }
+.st .tip b { font-weight: var(--cds-font-weight-medium); }
+.st .tip .m { color: var(--cds-text-secondary); }
+.st .tip .w { color: var(--color-warn); }
+.st .tablewrap { overflow-x: auto; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+.st table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+.st th, .st td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.st th { color: var(--color-fg-muted); font-weight: var(--cds-font-weight-medium); background: var(--color-panel); }
+.st td.num, .st th.num { text-align: right; }
+.st td .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; }
+.st td .pill.Bestelling { background: #5b6b7a; color: #fff; }
+.st td .pill.Levering { background: #e0443e; color: #fff; }
+.st td.done { color: var(--color-fg-muted); }
+.st td.now { color: var(--color-ok); font-weight: var(--cds-font-weight-medium); }
+.st td.warn { color: var(--color-warn); }
+.st .err { color: var(--color-bad); font-size: var(--cds-font-size-caption); }
+.st details { margin-top: var(--cds-gap-xl); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.st details li { margin: 4px 0; }
+</style>
+
+<div class="st">
+  <h1 id="titel">Staalbestellingen en -leveringen per project</h1>
+  <p class="lead" id="samenvatting">Eerstvolgende bestelling: <b data-draw="volgProj" data-source="kpi" data-field="VolgendeOnderdeel" data-row="0">—</b>, te plaatsen tegen <b data-draw="volgDatum" data-source="kpi" data-field="VolgendeDatum" data-row="0">—</b>. In de komende 90 dagen staan <b data-draw="b90" data-source="kpi" data-field="Bestellingen_90d" data-row="0">—</b> bestellingen en <b data-draw="l90" data-source="kpi" data-field="Leveringen_90d" data-row="0">—</b> leveringen gepland.</p>
+
+  <div class="tiles" id="kpis">
+    <div class="tile"><div class="lbl">Bestellingen te plaatsen</div><div class="val" data-draw="t_b90" data-source="kpi" data-field="Bestellingen_90d" data-row="0">—</div><div class="note">komende 90 dagen</div></div>
+    <div class="tile"><div class="lbl">Leveringen te verwachten</div><div class="val" data-draw="t_l90" data-source="kpi" data-field="Leveringen_90d" data-row="0">—</div><div class="note">komende 90 dagen</div></div>
+    <div class="tile"><div class="lbl">Lopende leveringen</div><div class="val" data-draw="t_lop" data-source="kpi" data-field="Lopend_levering" data-row="0">—</div><div class="note">vandaag tussen start en einde</div></div>
+    <div class="tile warn"><div class="lbl">Leveringen zonder gewicht</div><div class="val" data-draw="t_gew" data-source="kpi" data-field="Levering_zonder_gewicht" data-row="0">—</div><div class="note">van <span data-draw="t_levtot" data-source="kpi" data-field="Leveringen_totaal" data-row="0">—</span> leveringen in VP</div></div>
+  </div>
+
+  <h2 id="tijdlijn">Tijdlijn per project</h2>
+  <p class="sub">Per project en onderdeel: de Staalbestelling (doorlooptijd ATA en bestelling; het einde is de besteldatum) en de Staallevering (walsen en leveren; het einde is de datum waarop alle platen bij ons zijn). De rode lijn is vandaag. Wijs een balk aan voor de details.</p>
+  <div class="ctrl">
+    <div class="legend" id="legende"><span><i style="background:#5b6b7a"></i>Staalbestelling</span><span><i style="background:#e0443e"></i>Staallevering</span><span><i class="line"></i>wachttijd tussen bestelling en levering</span></div>
+    <label>Periode <select class="dash-select" id="periode" aria-label="Periode"><option value="alles">Alles</option><option value="vanaf">Vanaf vandaag</option></select></label>
+  </div>
+  <div class="chart" data-draw="tijdlijn" data-source="staal" id="gantt-staal"></div>
+
+  <h2 id="lijst">Chronologische lijst</h2>
+  <p class="sub">Alle bestellingen en leveringen, gesorteerd op einddatum. De periodekeuze hierboven geldt ook hier.</p>
+  <div class="tablewrap">
+    <table data-source="staal" data-row-key="Sleutel" id="tabel-staal">
+      <thead><tr>
+        <th data-field="Einde">Einddatum</th><th data-field="Activiteit">Activiteit</th><th data-field="Project">Nr</th><th data-field="Projectnaam">Project</th>
+        <th data-field="Onderdeel">Onderdeel</th><th data-field="Projectleider">Projectleider</th><th data-field="Start">Start</th>
+        <th class="num" data-field="Dagen">Dagen</th><th class="num" data-field="Gewicht_ton">Gewicht (t)</th><th data-field="Status">Status</th><th data-field="Opmerking">Opmerking</th>
+      </tr></thead>
+      <tbody data-draw="rijen"></tbody>
+    </table>
+  </div>
+
+  <details id="toelichting">
+    <summary>Toelichting en beperkingen van de data</summary>
+    <ul>
+      <li>Bron: VP-export L0 Extern van 20/11/2026. Alleen lijnen met "Staalbestelling" (fase DSG) of "Staallevering" (fase TR_PROD) in de naam van het projectdeel, en alleen actieve lijnen (Cap_teller ≠ 0).</li>
+      <li>Niet alle projecten hebben al een L0-planning met staallijnen in VP. Een project dat hier ontbreekt, heeft dus niet per se geen staalbestelling.</li>
+      <li>Het gewicht in kg is verplicht op de Staallevering, maar is nog bij de meeste lijnen niet ingevuld. Bij 3102 Ledabrücke staat het gewicht op de Staalbestelling; dat wordt hier getoond maar telt niet mee als levering met gewicht.</li>
+      <li>"Voorbeelddata": start- en einddatum zijn dezelfde als het voorbeeld in de importexcel. Deze data zijn waarschijnlijk nog niet aangepast door de projectleider.</li>
+      <li>"Komende 90 dagen" en de status (Afgerond, Lopend, Gepland) worden berekend ten opzichte van de dag waarop je het dashboard opent.</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+dash.loader('l0', {
+  description: 'Leest de VP-export (puntkomma als scheidingsteken): datums dd/mm/jjjj worden jjjj-mm-dd, "1234 kg" wordt het getal 1234.',
+  fn: ({answer}) => {
+    const lines = String(answer).replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim());
+    const iso = (s) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(s || ''); return m ? m[3] + '-' + m[2] + '-' + m[1] : null; };
+    const columns = ['Project', 'Projectnaam', 'Projectdeel', 'Fase', 'Gewicht_kg', 'Level', 'ExternIntern', 'Start', 'Einde', 'Cap_teller', 'AangemaaktDoor', 'Aangemaakt', 'Gewijzigd'];
+    const rows = lines.slice(1).map((l) => {
+      const c = l.split(';');
+      return {
+        Project: c[0], Projectnaam: c[1], Projectdeel: c[2], Fase: c[3],
+        Gewicht_kg: Number(String(c[4] || '').replace(/[^0-9.]/g, '')) || 0,
+        Level: c[5], ExternIntern: c[6], Start: iso(c[7]), Einde: iso(c[8]),
+        Cap_teller: Number(c[9]), AangemaaktDoor: c[10], Aangemaakt: c[11], Gewijzigd: c[12]
+      };
+    });
+    return {columns, rows};
+  }
+});
+
+dash.calc('staal', {
+  title: 'Staalbestellingen en -leveringen',
+  description: 'Actieve L0-lijnen met Staalbestelling of Staallevering in de naam, met projectleider, duur, gewicht in ton en status ten opzichte van vandaag.',
+  inputs: ['l0', 'projecten'],
+  fn: (l0, projecten) => {
+    const VOORBEELD = new Set(['2026-06-01|2026-09-14', '2026-07-01|2026-10-30', '2026-08-10|2026-11-04', '2026-09-21|2026-11-13', '2026-09-28|2027-03-05', '2027-03-08|2027-03-19', '2026-04-27|2026-04-30', '2026-04-30|2026-05-13']);
+    const pl = new Map(projecten.map((p) => [String(p.Nr), p.Projectleider]));
+    const n = new Date();
+    const vandaag = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())).toISOString().slice(0, 10);
+    return l0
+      .filter((r) => r.Cap_teller !== 0 && r.Start && r.Einde && /staal(bestelling|levering)/i.test(r.Projectdeel))
+      .map((r) => {
+        const isBest = /staalbestelling/i.test(r.Projectdeel);
+        const onderdeel = r.Projectdeel.replace(/\s*staal(bestelling|levering)\s*/i, ' ').trim() || r.Projectnaam;
+        const opm = [];
+        if (VOORBEELD.has(r.Start + '|' + r.Einde)) opm.push('voorbeelddata uit importexcel');
+        if (isBest && r.Gewicht_kg > 0) opm.push('gewicht staat op de bestelling');
+        if (!isBest && !(r.Gewicht_kg > 0)) opm.push('gewicht ontbreekt');
+        return {
+          Sleutel: r.Project + '|' + r.Projectdeel + '|' + r.Start,
+          Project: r.Project, Projectnaam: r.Projectnaam, Projectleider: pl.get(r.Project) || '—',
+          Onderdeel: onderdeel, Activiteit: isBest ? 'Bestelling' : 'Levering', Fase: r.Fase,
+          Start: r.Start, Einde: r.Einde,
+          Dagen: Math.round((Date.parse(r.Einde) - Date.parse(r.Start)) / 864e5) + 1,
+          Gewicht_ton: r.Gewicht_kg > 0 ? Math.round(r.Gewicht_kg / 100) / 10 : null,
+          Status: r.Einde < vandaag ? 'Afgerond' : (r.Start <= vandaag ? 'Lopend' : 'Gepland'),
+          Opmerking: opm.join('; ')
+        };
+      })
+      .sort((a, b) => a.Einde.localeCompare(b.Einde) || a.Project.localeCompare(b.Project));
+  }
+});
+
+dash.calc('kpi', {
+  title: 'Kerncijfers staal',
+  description: 'Tellingen over de staallijnen, met vandaag als referentie.',
+  inputs: ['staal'],
+  fn: (staal) => {
+    const n = new Date();
+    const t0 = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()));
+    const vandaag = t0.toISOString().slice(0, 10);
+    const t90 = new Date(t0.getTime() + 90 * 864e5).toISOString().slice(0, 10);
+    const best = staal.filter((r) => r.Activiteit === 'Bestelling');
+    const lev = staal.filter((r) => r.Activiteit === 'Levering');
+    const binnen = (r) => r.Einde >= vandaag && r.Einde <= t90;
+    const volgende = best.filter((r) => r.Einde >= vandaag).sort((a, b) => a.Einde.localeCompare(b.Einde))[0];
+    const fmt = (s) => s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4);
+    return [{
+      Bestellingen_90d: best.filter(binnen).length,
+      Leveringen_90d: lev.filter(binnen).length,
+      Lopend_levering: lev.filter((r) => r.Status === 'Lopend').length,
+      Levering_zonder_gewicht: lev.filter((r) => !(r.Gewicht_ton > 0)).length,
+      Leveringen_totaal: lev.length,
+      VolgendeOnderdeel: volgende ? volgende.Project + ' ' + volgende.Onderdeel : 'geen gepland',
+      VolgendeDatum: volgende ? fmt(volgende.Einde) : '—'
+    }];
+  }
+});
+</script>
+
+<script>
+window.ST = {
+  KLEUR: {Bestelling: '#5b6b7a', Levering: '#e0443e'},
+  parse: d3.utcParse('%Y-%m-%d'),
+  fmt: d3.utcFormat('%d/%m/%Y'),
+  periode: 'alles',
+  vandaag: () => { const n = new Date(); return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())); },
+  rijen: () => {
+    const s = dash.data('staal');
+    if (s.status !== 'ok') return null;
+    const v = ST.vandaag().toISOString().slice(0, 10);
+    return ST.periode === 'vanaf' ? s.data.filter((r) => r.Einde >= v) : s.data;
+  },
+  as: (g, x) => {
+    const w = x.range()[1] - x.range()[0];
+    g.call(d3.axisTop(x).ticks(Math.max(2, Math.floor(w / 70))).tickFormat((d) => d.getUTCMonth() === 0 ? d3.utcFormat('%Y')(d) : d3.utcFormat('%m/%y')(d)).tickSizeOuter(0));
+    const r1 = x.range()[1] + 6;
+    g.selectAll('.tick text').each(function () {
+      const m = /translate\(([-\d.]+)/.exec(this.parentNode.getAttribute('transform') || '');
+      const tx = m ? Number(m[1]) : 0, half = this.getComputedTextLength() / 2;
+      if (tx + half > r1 || tx - half < 0) this.remove();
+    });
+    g.selectAll('.domain, line').style('stroke', 'var(--cds-chart-axis)');
+  },
+  kort: (node, max) => { let s = node.textContent; while (node.getComputedTextLength() > max && s.length > 4) { s = s.slice(0, -2); node.textContent = s + '…'; } }
+};
+
+document.querySelectorAll('#periode').forEach((sel) => {
+  sel.addEventListener('change', () => { ST.periode = sel.value; dash.draw('tijdlijn'); dash.draw('rijen'); });
+});
+
+function kpi(name, field) {
+  dash.draw(name, (el) => {
+    const k = dash.data('kpi');
+    el.textContent = k.status === 'ok' && k.data.length ? String(k.data[0][field]) : '—';
+  });
+}
+kpi('volgProj', 'VolgendeOnderdeel'); kpi('volgDatum', 'VolgendeDatum'); kpi('b90', 'Bestellingen_90d'); kpi('l90', 'Leveringen_90d');
+kpi('t_b90', 'Bestellingen_90d'); kpi('t_l90', 'Leveringen_90d'); kpi('t_lop', 'Lopend_levering'); kpi('t_gew', 'Levering_zonder_gewicht'); kpi('t_levtot', 'Leveringen_totaal');
+
+dash.draw('tijdlijn', (el) => {
+  const s = dash.data('staal');
+  if (s.status === 'error') { el.replaceChildren(); const p = document.createElement('p'); p.className = 'err'; p.textContent = 'De VP-export kon niet worden gelezen.'; el.appendChild(p); return; }
+  const data = ST.rijen();
+  if (!data) { el.replaceChildren(); el.textContent = '—'; return; }
+  el.replaceChildren();
+  if (!data.length) { const p = document.createElement('p'); p.className = 'sub'; p.textContent = 'Geen bestellingen of leveringen in deze periode.'; el.appendChild(p); return; }
+
+  const projecten = d3.groups(data, (r) => r.Project).sort((a, b) => d3.min(a[1], (r) => r.Start).localeCompare(d3.min(b[1], (r) => r.Start)));
+  const W = Math.max(320, el.clientWidth);
+  const ROW = 18, HEAD = 22, GAP = 10, TOP = 24;
+  const maxLbl = Math.min(W * 0.35, 240);
+
+  const wrap = document.createElement('div'); wrap.style.position = 'relative'; el.appendChild(wrap);
+  const svg = d3.select(wrap).append('svg').attr('width', '100%').attr('role', 'img')
+    .attr('aria-label', 'Tijdlijn van staalbestellingen en staalleveringen per project');
+  const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; wrap.appendChild(tip);
+
+  const meet = svg.append('text').style('font-size', '11px');
+  let lblW = 40;
+  for (const r of data) { meet.text(r.Onderdeel); lblW = Math.max(lblW, meet.node().getComputedTextLength()); }
+  meet.remove();
+  const LBL = Math.min(maxLbl, lblW) + 14;
+
+  const x = d3.scaleUtc().domain([d3.min(data, (r) => ST.parse(r.Start)), d3.utcDay.offset(d3.max(data, (r) => ST.parse(r.Einde)), 1)]).nice().range([LBL, W - 10]);
+
+  let y = TOP; const layout = [];
+  for (const [nr, rs] of projecten) {
+    const delen = d3.groups(rs, (r) => r.Onderdeel).sort((a, b) => d3.min(a[1], (r) => r.Start).localeCompare(d3.min(b[1], (r) => r.Start)));
+    layout.push({nr, rs, delen, y});
+    y += HEAD + delen.length * ROW + GAP;
+  }
+  const H = y;
+  svg.attr('viewBox', `0 0 ${W} ${H}`);
+
+  svg.append('g').selectAll('line').data(x.ticks(Math.max(2, Math.floor((W - LBL) / 70)))).join('line')
+    .attr('x1', (d) => x(d)).attr('x2', (d) => x(d)).attr('y1', TOP).attr('y2', H).style('stroke', 'var(--cds-chart-grid)');
+  ST.as(svg.append('g').attr('transform', `translate(0,${TOP - 2})`), x);
+
+  const toon = (ev, r) => {
+    tip.replaceChildren();
+    const add = (txt, cls, bold) => { const d = document.createElement('div'); if (cls) d.className = cls; if (bold) { const b = document.createElement('b'); b.textContent = txt; d.appendChild(b); } else d.textContent = txt; tip.appendChild(d); };
+    add(r.Project + ' · ' + r.Projectnaam, '', true);
+    add(r.Activiteit + ' · ' + r.Onderdeel);
+    add(ST.fmt(ST.parse(r.Start)) + ' – ' + ST.fmt(ST.parse(r.Einde)) + ' (' + r.Dagen + ' dagen)');
+    add((r.Gewicht_ton > 0 ? r.Gewicht_ton + ' t · ' : '') + 'PL: ' + r.Projectleider, 'm');
+    if (r.Opmerking) add(r.Opmerking, 'w');
+    tip.hidden = false;
+    const box = wrap.getBoundingClientRect();
+    let px = ev.clientX - box.left + 12; const py = ev.clientY - box.top + 12;
+    if (px + tip.offsetWidth > box.width) px = Math.max(0, ev.clientX - box.left - tip.offsetWidth - 12);
+    tip.style.left = px + 'px'; tip.style.top = py + 'px';
+  };
+
+  for (const b of layout) {
+    const g = svg.append('g').attr('transform', `translate(0,${b.y})`);
+    const pl = b.rs[0].Projectleider;
+    g.append('text').attr('class', 'ptitle').attr('x', 0).attr('y', 14)
+      .text(b.nr + ' · ' + b.rs[0].Projectnaam + (pl && pl !== '—' ? ' · ' + pl : ''))
+      .each(function () { ST.kort(this, W - 4); });
+    b.delen.forEach(([deel, rs], i) => {
+      const ry = HEAD + i * ROW;
+      if (i > 0) g.append('line').attr('x1', 0).attr('x2', W).attr('y1', ry).attr('y2', ry).style('stroke', 'var(--cds-chart-grid)').style('stroke-opacity', 0.5);
+      g.append('text').attr('x', 0).attr('y', ry + 12.5).text(deel).each(function () { ST.kort(this, maxLbl); });
+      const best = rs.filter((r) => r.Activiteit === 'Bestelling');
+      const lev = rs.filter((r) => r.Activiteit === 'Levering');
+      for (const bb of best) for (const ll of lev) {
+        const x1 = x(d3.utcDay.offset(ST.parse(bb.Einde), 1)), x2 = x(ST.parse(ll.Start));
+        if (x2 > x1) g.append('line').attr('x1', x1).attr('x2', x2).attr('y1', ry + ROW / 2).attr('y2', ry + ROW / 2)
+          .style('stroke', 'var(--cds-chart-reference)').style('stroke-dasharray', '3 3').style('stroke-width', 1.5);
+      }
+      g.selectAll(null).data(rs).join('rect')
+        .attr('x', (r) => x(ST.parse(r.Start)))
+        .attr('width', (r) => Math.max(3, x(d3.utcDay.offset(ST.parse(r.Einde), 1)) - x(ST.parse(r.Start))))
+        .attr('y', ry + 4).attr('height', ROW - 8).attr('rx', 2)
+        .style('fill', (r) => ST.KLEUR[r.Activiteit])
+        .style('fill-opacity', (r) => r.Opmerking.includes('voorbeelddata') ? 0.45 : 1)
+        .on('pointermove', toon).on('pointerleave', () => { tip.hidden = true; });
+    });
+  }
+  const t = ST.vandaag();
+  if (t >= x.domain()[0] && t <= x.domain()[1]) {
+    svg.append('line').attr('x1', x(t)).attr('x2', x(t)).attr('y1', TOP).attr('y2', H)
+      .style('stroke', 'var(--cds-chart-status-critical)').style('stroke-width', 1.5).style('pointer-events', 'none');
+  }
+});
+
+dash.draw('rijen', (tb) => {
+  tb.replaceChildren();
+  const data = ST.rijen();
+  if (!data) return;
+  for (const r of data) {
+    const tr = document.createElement('tr'); tr.dataset.key = r.Sleutel;
+    const cel = (v, cls) => { const td = document.createElement('td'); if (v instanceof Node) td.appendChild(v); else td.textContent = v; if (cls) td.className = cls; tr.appendChild(td); return td; };
+    cel(ST.fmt(ST.parse(r.Einde)));
+    const pill = document.createElement('span'); pill.className = 'pill ' + r.Activiteit; pill.textContent = r.Activiteit; cel(pill);
+    cel(r.Project); cel(r.Projectnaam); cel(r.Onderdeel); cel(r.Projectleider);
+    cel(ST.fmt(ST.parse(r.Start)));
+    cel(String(r.Dagen), 'num');
+    cel(r.Gewicht_ton > 0 ? String(r.Gewicht_ton) : '—', 'num');
+    cel(r.Status, r.Status === 'Afgerond' ? 'done' : (r.Status === 'Lopend' ? 'now' : ''));
+    cel(r.Opmerking || '', r.Opmerking ? 'warn' : '');
+    tb.appendChild(tr);
+  }
+});
+</script>
+<p class="bron">Bron: Visual Planning, export L0 Extern van 20/11/2026. Statische momentopname; "komende 90 dagen" en de status rekenen vanaf de dag waarop de pagina geopend wordt.</p>
+</div>
+</body>
+</html>
